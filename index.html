@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MFE Student Practice App</title>
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #58cc02;
+            --indigo: #5865f2;
+            --white: #ffffff;
+            --incorrect: #ea2b2b;
+            --gray: #afafaf;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background: #f7f7f7;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            touch-action: manipulation;
+        }
+
+        #app-container {
+            width: 90%;
+            max-width: 500px;
+            background: var(--white);
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 8px 0px #e5e5e5;
+            border: 2px solid #e5e5e5;
+            position: relative;
+        }
+
+        /* Timer UI */
+        .timer-circle {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--white);
+            border: 4px solid var(--indigo);
+            width: 55px;
+            height: 55px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: 900;
+            color: var(--indigo);
+            font-size: 1.3rem;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+        }
+
+        .header { display: flex; align-items: center; gap: 15px; margin-top: 15px; margin-bottom: 20px; }
+        .progress-bg { flex-grow: 1; height: 14px; background: #e5e5e5; border-radius: 10px; overflow: hidden; }
+        #progress-fill { height: 100%; width: 0%; background: var(--primary); transition: 0.4s; }
+        
+        .ch-info { color: var(--indigo); font-weight: 800; font-size: 0.8rem; text-transform: uppercase; margin-bottom: 5px; }
+        
+        .word-section { text-align: center; margin-bottom: 25px; }
+        .word-section h1 { font-size: 2.6rem; margin: 5px 0; color: #3c3c3c; }
+
+        .speaker-btn { background: #f0f0f0; border: none; border-radius: 50%; width: 45px; height: 45px; cursor: pointer; font-size: 1.2rem; margin-top: 5px; }
+
+        .options-grid { display: grid; gap: 12px; }
+        .opt-btn { 
+            background: white; border: 2px solid #e5e5e5; padding: 18px; 
+            border-radius: 15px; font-weight: 700; cursor: pointer; text-align: left;
+            box-shadow: 0 4px 0px #e5e5e5; font-size: 1.1rem; transition: 0.1s;
+        }
+        .opt-btn:active { transform: translateY(2px); box-shadow: 0 2px 0px #e5e5e5; }
+        .opt-btn.correct { background: #d7ffb8; border-color: var(--primary); color: #46a302; box-shadow: 0 4px 0px var(--primary); }
+        .opt-btn.wrong { background: #ffdfe0; border-color: var(--incorrect); color: var(--incorrect); box-shadow: 0 4px 0px var(--incorrect); }
+
+        #feedback { margin-top: 15px; text-align: center; font-weight: 700; display: none; padding: 10px; border-radius: 10px; }
+        
+        .nav-btn { width: 100%; background: var(--indigo); color: white; border: none; padding: 18px; border-radius: 15px; font-size: 1.2rem; font-weight: 900; cursor: pointer; margin-top: 20px; box-shadow: 0 5px 0px #3e48ae; display: none; }
+
+        .start-screen { text-align: center; }
+        select { width: 100%; padding: 15px; border-radius: 12px; border: 2px solid #ddd; margin: 20px 0; font-size: 1rem; font-family: inherit; font-weight: 700; }
+    </style>
+</head>
+<body>
+
+<div id="app-container">
+    <div id="setup" class="start-screen">
+        <h1 style="color: var(--indigo); font-weight: 900; font-size: 2rem;">MFE MASTER QUIZ</h1>
+        <p style="color: #666;">Choose a chapter to start practicing!</p>
+        <select id="chapter-range">
+            <option value="All">All 65 Chapters (Random)</option>
+            <option value="Jhaji">Jhaji Achaar (Ch 12)</option>
+            <option value="PW">Physics Wallah (Ch 22)</option>
+            <option value="Manjhi">Mountain Man (Ch 42)</option>
+            <option value="GlowUp">Glow Up & Habits (Ch 50-65)</option>
+        </select>
+        <button onclick="begin()" style="width: 100%;" class="opt-btn">START LEARNING</button>
+    </div>
+
+    <div id="quiz" style="display: none;">
+        <div class="timer-circle" id="timer">15</div>
+        <div class="header">
+            <div class="progress-bg"><div id="progress-fill"></div></div>
+            <div style="font-weight: 900; color: var(--indigo);">⭐ <span id="score">0</span></div>
+        </div>
+
+        <div class="word-section">
+            <div class="ch-info" id="chapter-tag">Chapter Name</div>
+            <h1 id="target-word">Word</h1>
+            <button class="speaker-btn" onclick="sayWord()">🔊</button>
+        </div>
+
+        <div id="options" class="options-grid"></div>
+        <div id="feedback"></div>
+        <button id="next" class="nav-btn" onclick="nextQ()">CONTINUE</button>
+    </div>
+</div>
+
+<script>
+    // 65 Chapters Extraction Logic (Example data populated from PDF)
+    const database = [
+        { w: "Introduction", m: "Parichay dena", c: "Ch 1: Greeting" },
+        { w: "Circle", m: "Ghera banana", c: "Ch 2: Instructions" },
+        { w: "Pronounce", m: "Uchcharan karna", c: "Ch 3: Discovery" },
+        { w: "Entrepreneur", m: "Naya business shuru karne wala", c: "Ch 12: Jhaji Achaar" },
+        { w: "Delicious", m: "Swadisht ya laziz", c: "Ch 12: Jhaji Achaar" },
+        { w: "Investment", m: "Paisa nivesh karna", c: "Ch 13: Shark Tank" },
+        { w: "Affordable", m: "Sasta/Kifayati", c: "Ch 22: Physics Wallah" },
+        { w: "Revolution", m: "Badi kranti", c: "Ch 23: Ed-Tech" },
+        { w: "Perseverance", m: "Kathin parishram aur dridhata", c: "Ch 42: Dashrath Manjhi" },
+        { w: "Isolated", m: "Sabse alag-thalag", c: "Ch 43: Village Life" },
+        { w: "Mindfulness", m: "Dhyan se kaam karna", c: "Ch 52: Glow Up" },
+        { w: "Consistency", m: "Nirantarta", c: "Ch 58: Habits" },
+        { w: "Automatic", m: "Apne aap hone wala", c: "Ch 60: Brushing Habit" },
+        { w: "Perspective", m: "Nazariya", c: "Ch 65: Success Speech" },
+        { w: "Resilience", m: "Mushkilon se ladne ki shakti", c: "Ch 65: Success Speech" }
+        // Aap yahan aur 600 words add kar sakte hain...
+    ];
+
+    let currentSet = [];
+    let qIdx = 0;
+    let totalScore = 0;
+    let countdown;
+    let time = 15;
+
+    function begin() {
+        document.getElementById('setup').style.display = 'none';
+        document.getElementById('quiz').style.display = 'block';
+        currentSet = [...database].sort(() => Math.random() - 0.5);
+        showQ();
+    }
+
+    function showQ() {
+        if(qIdx >= currentSet.length) {
+            alert("Quiz Complete! Score: " + totalScore);
+            location.reload();
+            return;
+        }
+
+        time = 15;
+        document.getElementById('timer').innerText = time;
+        document.getElementById('next').style.display = 'none';
+        document.getElementById('feedback').style.display = 'none';
+        
+        let q = currentSet[qIdx];
+        document.getElementById('target-word').innerText = q.w;
+        document.getElementById('chapter-tag').innerText = q.c;
+        document.getElementById('progress-fill').style.width = (qIdx/currentSet.length*100) + "%";
+
+        // Timer
+        clearInterval(countdown);
+        countdown = setInterval(() => {
+            time--;
+            document.getElementById('timer').innerText = time;
+            if(time <= 0) { clearInterval(countdown); autoReveal(); }
+        }, 1000);
+
+        // Options
+        let choices = [q.m];
+        while(choices.length < 4) {
+            let r = database[Math.floor(Math.random()*database.length)].m;
+            if(!choices.includes(r)) choices.push(r);
+        }
+        choices.sort(() => Math.random() - 0.5);
+
+        let container = document.getElementById('options');
+        container.innerHTML = '';
+        choices.forEach(choice => {
+            let b = document.createElement('button');
+            b.className = 'opt-btn';
+            b.innerText = choice;
+            b.onclick = () => check(b, choice, q.m);
+            container.appendChild(b);
+        });
+    }
+
+    function check(btn, selected, correct) {
+        clearInterval(countdown);
+        let all = document.querySelectorAll('.opt-btn');
+        all.forEach(b => b.disabled = true);
+
+        if(selected === correct) {
+            btn.classList.add('correct');
+            totalScore += 10;
+            document.getElementById('score').innerText = totalScore;
+        } else {
+            btn.classList.add('wrong');
+            all.forEach(b => { if(b.innerText === correct) b.classList.add('correct'); });
+        }
+        document.getElementById('next').style.display = 'block';
+    }
+
+    function autoReveal() {
+        let correct = currentSet[qIdx].m;
+        document.querySelectorAll('.opt-btn').forEach(b => {
+            b.disabled = true;
+            if(b.innerText === correct) b.classList.add('correct');
+        });
+        document.getElementById('next').style.display = 'block';
+    }
+
+    function nextQ() { qIdx++; showQ(); }
+
+    function sayWord() {
+        let utterance = new SpeechSynthesisUtterance(document.getElementById('target-word').innerText);
+        window.speechSynthesis.speak(utterance);
+    }
+</script>
+
+</body>
+</html>
