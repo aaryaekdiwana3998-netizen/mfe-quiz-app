@@ -1,1 +1,0 @@
-# mfe-quiz-app
